@@ -3,7 +3,7 @@ name: digest
 description: Write the short summary card (digest) that the user sees when hovering this thread in the bb sidebar. Use at the end of every turn that did real work, asked the user for a decision, or changed what the user must do next.
 ---
 
-# Thread digest
+# Thread digest and title
 
 The user keeps many threads. When they hover one in the sidebar, bb shows a card
 built from the digest you wrote. Write it so they can decide what to do
@@ -55,3 +55,16 @@ EOF_DIGEST
 - State only what happened. Do not claim tests passed that you did not run.
 - Keep `needs` empty when nothing is waiting on the user.
 - Never put secrets or private data in a digest.
+
+## Thread title
+
+On the first turn of a thread, name it once:
+
+```sh
+bb digest title "Schedule: hours by school weeks"
+```
+
+- Form `Area: summary`, in English. Area is one of the allowed list; the command prints the list when you get it wrong.
+- The summary is a short noun phrase for the result, lowercase start, no final period; at most 50 characters in total.
+- No model or provider in the title.
+- If the command says the thread is already titled, do nothing. `--dry-run` only checks.

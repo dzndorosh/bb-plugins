@@ -13,6 +13,13 @@ import {
   type BbPluginApi,
 } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import {
+  DEFAULT_AREAS,
+  DEFAULT_MAX_LENGTH,
+  checkTitle,
+  parseAreas,
+  titleInstruction,
+} from "./lib/title-rules";
 
 const chips = z.array(z.string().trim().min(1).max(20)).max(2).default([]);
 
@@ -80,6 +87,30 @@ export const DIGEST_CHANGED = "digest-changed";
 const METADATA_KEY = "digest";
 
 export default async function plugin(bb: BbPluginApi) {
+  const settings = bb.settings.define({
+    titleRule: {
+      type: "boolean",
+      label: "Ask agents to title threads",
+      default: true,
+    },
+    areas: {
+      type: "string",
+      label: "Title areas",
+      experimental_multiline: true,
+      default: DEFAULT_AREAS.join(", "),
+    },
+    maxLength: {
+      type: "number",
+      label: "Title length limit",
+      experimental_schema: z.number().int().min(20).max(120),
+      default: DEFAULT_MAX_LENGTH,
+    },
+  });
+  const config = await settings.get();
+  const areas = parseAreas(config.areas);
+  const maxLength = config.maxLength;
+  const TITLED_KEY = "titled";
+
   async function readDigest(threadId: string): Promise<Digest | null> {
     const metadata = await bb.sdk.threads.getPluginMetadata({ threadId });
     const parsed = digestSchema.safeParse(metadata[METADATA_KEY]);
@@ -166,6 +197,11 @@ export default async function plugin(bb: BbPluginApi) {
     },
   } as const;
 
+  if (config.titleRule) {
+    const instruction = titleInstruction(areas, maxLength);
+    bb.agents.contributeInstructions(() => instruction);
+  }
+
   bb.cli.register(
     defineCli({
       name: "digest",
@@ -209,6 +245,50 @@ export default async function plugin(bb: BbPluginApi) {
               updatedAt: Date.now(),
             });
             return { exitCode: 0, stdout: `Digest saved for ${threadId}` };
+          },
+        }),
+        title: cliCommand({
+          summary:
+            "Set this thread's title once, as `Area: summary` in English. Run it on the first turn.",
+          positionals: [
+            { name: "title", description: "Area: summary", required: true },
+          ],
+          options: {
+            ...threadOption,
+            force: {
+              type: "boolean",
+              description: "Replace a title that was already set by this command",
+            },
+            "dry-run": {
+              type: "boolean",
+              description: "Only check the title, do not apply it",
+            },
+          },
+          async run(input, ctx) {
+            const threadId = resolveThread(input.options.thread, ctx);
+            const checked = checkTitle(input.positionals.title, areas, maxLength);
+            if (!checked.ok) {
+              throw new PluginCliError(checked.problems.join("; "), {
+                code: "invalid_title",
+                hint: `Example: bb digest title "${areas[0]}: short result"`,
+              });
+            }
+            if (input.options["dry-run"]) {
+              return { exitCode: 0, stdout: `OK: ${checked.title}` };
+            }
+            const metadata = await bb.sdk.threads.getPluginMetadata({ threadId });
+            if (metadata[TITLED_KEY] === true && !input.options.force) {
+              return {
+                exitCode: 0,
+                stdout: "Thread is already titled; nothing changed.",
+              };
+            }
+            await bb.sdk.threads.update({ threadId, title: checked.title });
+            await bb.sdk.threads.updatePluginMetadata({
+              threadId,
+              set: { [TITLED_KEY]: true },
+            });
+            return { exitCode: 0, stdout: `Title set: ${checked.title}` };
           },
         }),
         show: cliCommand({

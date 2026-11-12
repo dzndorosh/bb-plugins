@@ -1,4 +1,4 @@
-# digest
+# bb-plugin-digest
 
 Плагин для [bb](https://getbb.app): не тонуть в сотнях тредов.
 
@@ -12,16 +12,15 @@
 3. **Доска на экране нового треда.** Колонки **needs you / done / running** со
    сгруппированными по проекту карточками.
 
-![Карточка-сводка при наведении на тред](docs/hover-card.jpg)
-
-![Список в сайдбаре и доска needs you / done / running](docs/board.jpg)
-
 ## Установка
 
 Нужен bb 0.49 или новее.
 
 ```sh
-bb plugin install git:https://github.com/dzndorosh/bb-plugins.git@main --plugin digest
+git clone https://github.com/<автор>/bb-plugin-digest.git
+cd bb-plugin-digest
+npm ci
+bb plugin install .
 ```
 
 Список тредов подключается сам. Вернуть встроенный:
@@ -52,6 +51,22 @@ EOF_DIGEST
 
 > В конце каждого хода, который сделал реальную работу или ждёт решения
 > пользователя, запиши сводку треда через `bb digest set` (см. навык `digest`).
+
+## Названия тредов
+
+Плагин сам просит каждого агента на первом ходу дать треду название
+`Area: summary`: по-английски, коротко, из фиксированного списка областей.
+Команда проверяет название и отклоняет неверное с подсказкой.
+
+```sh
+bb digest title "Schedule: hours by school weeks"
+bb digest title "Schedule: ..." --dry-run   # только проверить
+```
+
+Настройки (`bb plugin config digest`): `titleRule` (включить или выключить
+просьбу агентам), `areas` (список областей через запятую), `maxLength`
+(лимит длины, по умолчанию 50). Правила лежат в `lib/title-rules.ts`,
+проверка: `npm test`.
 
 ## Как треды попадают в колонки
 
