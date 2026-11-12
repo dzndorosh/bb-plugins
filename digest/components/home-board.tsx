@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useThreadsBoard, type Item } from "@/hooks/use-threads-board";
+import { useThreadsBoard, type Node } from "@/hooks/use-threads-board";
 import { BoardCard, ProjectChip } from "@/components/thread-ui";
 import type { Lane } from "@/lib/classify";
 import type { PluginSidebarProject } from "@get-bb/plugin-sdk/app";
@@ -20,17 +20,17 @@ function Column({
 }: {
   label: string;
   dot: string;
-  items: Item[];
+  items: Node[];
   limit: number;
   projects: Map<string, PluginSidebarProject>;
   now: number;
 }) {
   const shown = items.slice(0, limit);
-  const groups = new Map<string, Item[]>();
-  for (const item of shown) {
-    const list = groups.get(item.thread.projectId) ?? [];
-    list.push(item);
-    groups.set(item.thread.projectId, list);
+  const groups = new Map<string, Node[]>();
+  for (const node of shown) {
+    const list = groups.get(node.item.thread.projectId) ?? [];
+    list.push(node);
+    groups.set(node.item.thread.projectId, list);
   }
   return (
     <section className="flex min-w-0 flex-1 flex-col gap-2">
@@ -48,8 +48,8 @@ function Column({
           <div className="flex">
             <ProjectChip project={projects.get(projectId)} />
           </div>
-          {list.map((item) => (
-            <BoardCard key={item.thread.id} item={item} now={now} />
+          {list.map((node) => (
+            <BoardCard key={node.item.id} node={node} now={now} />
           ))}
         </div>
       ))}
@@ -63,7 +63,7 @@ function Column({
 }
 
 export function HomeBoard() {
-  const { items, projects, now } = useThreadsBoard();
+  const { nodes, projects, now } = useThreadsBoard();
   const byProject = new Map(projects.map((project) => [project.id, project]));
   const rootRef = useRef<HTMLDivElement | null>(null);
   // The host prints the section title above the board; the board needs none.
@@ -83,7 +83,7 @@ export function HomeBoard() {
         <Column
           key={lane}
           {...column}
-          items={items.filter((item) => item.lane === lane)}
+          items={nodes.filter((node) => node.lane === lane)}
           projects={byProject}
           now={now}
         />

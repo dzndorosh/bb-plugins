@@ -46,9 +46,3 @@ export function timeAgo(from: number, now: number): string {
   if (hours < 24) return `${hours} ч назад`;
   return `${Math.floor(hours / 24)} дн назад`;
 }
-
-/** Roots always show; a child shows only while it needs you or is running. */
-export function isListed(thread: PluginSidebarThread, lane: Lane): boolean {
-  if (thread.isHidden || thread.isArchived) return false;
-  return thread.parentThreadId === null || lane === "needs" || lane === "running";
-}

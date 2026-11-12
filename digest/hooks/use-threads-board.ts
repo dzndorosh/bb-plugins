@@ -6,9 +6,18 @@ import {
 } from "@get-bb/plugin-sdk/app";
 import type { PluginSidebarThread } from "@get-bb/plugin-sdk/app";
 import type { rpcContract } from "../server";
-import { isListed, laneOf, type Badge, type Lane } from "@/lib/classify";
+import { laneOf, type Badge, type Lane } from "@/lib/classify";
+import { buildTree, type TreeNode } from "@/lib/tree";
 
-export type Item = { thread: PluginSidebarThread; lane: Lane; badge: Badge | undefined };
+export type Item = {
+  id: string;
+  parentId: string | null;
+  updatedAt: number;
+  thread: PluginSidebarThread;
+  lane: Lane;
+  badge: Badge | undefined;
+};
+export type Node = TreeNode<Item>;
 
 const CHUNK = 200;
 
@@ -30,7 +39,7 @@ function useBadges(ids: readonly string[]) {
   return badges;
 }
 
-/** Threads classified into lanes, newest first, with digest badges attached. */
+/** Threads nested under their parents, classified into lanes, with digest badges. */
 export function useThreadsBoard() {
   const { status, threads, projects } = useSidebarThreads();
   const live = useMemo(
@@ -43,14 +52,22 @@ export function useThreadsBoard() {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  const items = useMemo(() => {
-    const result: Item[] = [];
-    for (const thread of live) {
-      const badge = badges[thread.id];
-      const lane = laneOf(thread, badge, now);
-      if (isListed(thread, lane)) result.push({ thread, lane, badge });
-    }
-    return result.sort((a, b) => b.thread.updatedAt - a.thread.updatedAt);
-  }, [live, badges, now]);
-  return { status, items, projects, now };
+  const nodes = useMemo(
+    () =>
+      buildTree(
+        live.map((thread): Item => {
+          const badge = badges[thread.id];
+          return {
+            id: thread.id,
+            parentId: thread.parentThreadId,
+            updatedAt: thread.updatedAt,
+            thread,
+            lane: laneOf(thread, badge, now),
+            badge,
+          };
+        }),
+      ),
+    [live, badges, now],
+  );
+  return { status, nodes, projects, now };
 }

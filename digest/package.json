@@ -48,6 +48,6 @@
     "vaul": "^1.1.2"
   },
   "scripts": {
-    "test": "node --test lib/title-rules.test.ts"
+    "test": "node --test lib/title-rules.test.ts lib/tree.test.ts"
   }
 }
